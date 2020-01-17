@@ -1,7 +1,7 @@
 ;; Define dependencies for the bot. These
 ;; will need to be loaded in using Quicklisp
 
-(ql:quickload '("cl-toml" "drakma" "plump" "tooter" "babel"))
+(ql:quickload '("drakma" "plump" "tooter" "babel"))
 
 ;; Set a location to draw the feed from
 

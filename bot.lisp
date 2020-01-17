@@ -1,0 +1,116 @@
+;; Define dependencies for the bot. These
+;; will need to be loaded in using Quicklisp
+
+(ql:quickload '("cl-toml" "drakma" "plump" "tooter" "babel"))
+
+;; Set a location to draw the feed from
+
+(defvar *feed-path* "https://folklorethursday.com/feed")
+
+;; Add the hashtag for the end of the toot
+
+(defun bot-message ()
+  (concatenate 'string (string #\newline) (string #\newline) "#FolkloreThursday"))
+
+;; Ensure that Drakma uses the correct format
+
+(setf drakma:*drakma-default-external-format* :UTF-8)
+
+;; Define the structure of the post. We only
+;; need the title and the URL since we don't
+;; post pictures
+
+(defstruct bot-post
+  title
+  url
+  guid
+  message
+  )
+
+;; Define a function to find the first existing
+;; item within a tag node
+
+(defun get-first-tag (tag node)
+  (plump:render-text (car (plump:get-elements-by-tag-name node tag)))
+  )
+
+;; Define a function to pass an item in the
+;; feed to the bot-post structure
+
+(defun parse-rss-item (item)
+  (let* ((post (make-bot-post))
+	 )
+    (setf (bot-post-title post) (get-first-tag "title" item))
+    (setf (bot-post-url post) (get-first-tag "link" item))
+    (setf (bot-post-guid post) (get-first-tag "guid" item))
+    post
+    ))
+
+;; Fetch the RSS feed
+
+(defun get-rss-feed ()
+  (let* ((xml-text (map 'string 'code-char (drakma:http-request *feed-path*)))
+	 (plump:*tag-dispatchers* plump:*xml-tags*)
+	 (xml-tree (plump:parse xml-text))
+	 (items (plump:get-elements-by-tag-name xml-tree "item"))
+	 )
+    (reverse (map 'list #'parse-rss-item items))
+    ))
+
+;; Pass login details to tooter. These items
+;; need to be declared here until I figure out
+;; how to store them in a config file
+
+(defun get-mastodon-config ()
+  (make-instance 'tooter:client
+		 :base 
+		 :name
+		 :key
+                 :secret 
+                 :access-token)
+  )
+
+;; Structure the toot
+
+(defun send-toot (item)
+  (tooter:make-status (get-mastodon-config) (format nil "~a - ~a ~a"
+						    (bot-post-title item)
+						    (bot-post-url item)
+						    (bot-message)))
+  )
+
+;; Checks the links.txt file to see if the link
+;; has been recorded as previously posted
+
+(defun is-link-seen (item)
+  (with-open-file (stream "links.txt"
+			  :if-does-not-exist :create)
+    (loop for line = (read-line stream nil)
+       while line
+       when (string= line (bot-post-guid item)) return t))
+  )
+
+;; Record the guid of the post once it has been
+;; posted
+
+(defun record-link-seen (item)
+  (with-open-file (stream "links.txt"
+			  :direction :output
+			  :if-exists :append
+			  :if-does-not-exist :create)
+    (format stream "~a~%" (bot-post-guid item)))
+  )
+
+;; Define the process of running the bot
+
+(defun run-mastodon-bot ()
+  (let* ((first-ten (subseq (get-rss-feed) 0 10))
+	 (new-links (remove-if #'is-link-seen first-ten)))
+    (loop for item in new-links do
+	 (send-toot item)
+	 (record-link-seen item))
+    ))
+
+;; Run the bot
+
+(run-mastodon-bot)

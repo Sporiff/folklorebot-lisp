@@ -1,7 +1,20 @@
-;; Define dependencies for the bot. These
-;; will need to be loaded in using Quicklisp
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '("drakma" "plump" "tooter" "babel") :silent t)
+  )
 
-(ql:quickload '("drakma" "plump" "tooter" "babel"))
+(defpackage :ros.script.folklorebot.3796256887
+  (:use :cl))
+(in-package :ros.script.folklorebot.3796256887)
+
+(defun main (&rest argv)
+  (declare (ignorable argv)))
+;;; vim: set ft=lisp lisp:
 
 ;; Set a location to draw the feed from
 
@@ -64,10 +77,10 @@
 (defun get-mastodon-config ()
   (make-instance 'tooter:client
 		 :base 
-		 :name
-		 :key
+		 :name 
+		 :key 
                  :secret 
-                 :access-token)
+		 :access-token) 
   )
 
 ;; Structure the toot

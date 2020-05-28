@@ -62,7 +62,7 @@ exec ros -Q -- $0 "$@"
 ;; Fetch the RSS feed
 
 (defun get-rss-feed ()
-  (let* ((xml-text (map 'string 'code-char (drakma:http-request *feed-path*)))
+  (let* ((xml-text (babel:octets-to-string (drakma:http-request *feed-path*)))
 	 (plump:*tag-dispatchers* plump:*xml-tags*)
 	 (xml-tree (plump:parse xml-text))
 	 (items (plump:get-elements-by-tag-name xml-tree "item"))
@@ -76,11 +76,11 @@ exec ros -Q -- $0 "$@"
 
 (defun get-mastodon-config ()
   (make-instance 'tooter:client
-		 :base 
-		 :name 
-		 :key 
-                 :secret 
-		 :access-token) 
+		 :base ""
+		 :name ""
+		 :key ""
+     :secret ""
+		 :access-token "") 
   )
 
 ;; Structure the toot
